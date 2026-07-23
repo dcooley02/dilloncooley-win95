@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Personal portfolio for dilloncooley.us",
+  "description": "dilloncooley.us — Win95 desktop portfolio",
   "homepage": "https://dilloncooley.us",
   "scripts": {
     "dev": "vite",
