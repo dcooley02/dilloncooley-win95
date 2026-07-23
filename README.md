@@ -10,7 +10,8 @@ Vite, React, TypeScript, custom Win95-style CSS.
 
 ```bash
 npm install
-npm run dev
+npm run dev        # localhost only
+npm run dev:host   # expose on LAN / Tailscale when needed
 ```
 
 ```bash
@@ -36,3 +37,5 @@ PDFs: `public/docs/`
 ## Deploy
 
 Push to `main` → GitHub Actions → GitHub Pages. Domain is `dilloncooley.us` (`public/CNAME`), DNS via Cloudflare.
+
+Production HTML includes a Content-Security-Policy meta tag and a strict referrer policy. For extra browser headers GitHub Pages cannot set (e.g. `X-Content-Type-Options`, `X-Frame-Options` / `frame-ancestors`), add them in Cloudflare **Transform Rules → Modify Response Header** if you want.
