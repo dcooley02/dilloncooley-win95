@@ -1,0 +1,962 @@
+/* Windows 95-inspired shell — custom, no external UI kit */
+
+:root {
+  --win-face: #c0c0c0;
+  --win-face-dark: #808080;
+  --win-face-darker: #404040;
+  --win-face-light: #ffffff;
+  --win-desktop: #008080;
+  --win-title-active: #000080;
+  --win-title-inactive: #808080;
+  --win-title-text: #ffffff;
+  --win-text: #000000;
+  --win-taskbar: #c0c0c0;
+  --win-selection: #000080;
+  --win-font: 'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --win-mono: 'Lucida Console', 'Courier New', monospace;
+  --taskbar-h: 36px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--win-font);
+  font-size: 12px;
+  color: var(--win-text);
+  background: #000;
+  user-select: none;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Raised / sunken borders (classic Win95 look) */
+.raised {
+  border-top: 2px solid var(--win-face-light);
+  border-left: 2px solid var(--win-face-light);
+  border-right: 2px solid var(--win-face-darker);
+  border-bottom: 2px solid var(--win-face-darker);
+  background: var(--win-face);
+}
+
+.sunken {
+  border-top: 2px solid var(--win-face-darker);
+  border-left: 2px solid var(--win-face-darker);
+  border-right: 2px solid var(--win-face-light);
+  border-bottom: 2px solid var(--win-face-light);
+  background: var(--win-face);
+}
+
+.raised-thin {
+  border-top: 1px solid var(--win-face-light);
+  border-left: 1px solid var(--win-face-light);
+  border-right: 1px solid var(--win-face-darker);
+  border-bottom: 1px solid var(--win-face-darker);
+  background: var(--win-face);
+}
+
+.sunken-thin {
+  border-top: 1px solid var(--win-face-darker);
+  border-left: 1px solid var(--win-face-darker);
+  border-right: 1px solid var(--win-face-light);
+  border-bottom: 1px solid var(--win-face-light);
+}
+
+/* Desktop */
+.desktop {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--win-desktop);
+  overflow: hidden;
+}
+
+.desktop-icons {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  max-height: calc(100% - var(--taskbar-h) - 24px);
+  /* Above wallpaper; windows still stack higher when open */
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.desktop-icon {
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: default;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000;
+}
+
+.desktop-icon:hover,
+.desktop-icon:focus-visible,
+.desktop-icon.selected {
+  outline: none;
+  border: 1px dotted #fff;
+  background: rgba(0, 0, 128, 0.35);
+}
+
+.desktop-icon.selected .icon-label {
+  background: var(--win-selection);
+  color: #fff;
+  text-shadow: none;
+  padding: 1px 3px;
+}
+
+.desktop-icon .icon-glyph {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.4));
+}
+
+.desktop-icon .icon-label {
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* Window chrome */
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  min-height: 120px;
+  background: var(--win-face);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.window.minimized {
+  display: none;
+}
+
+.window-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 2px 3px 2px 4px;
+  background: var(--win-title-inactive);
+  color: var(--win-title-text);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.window.active .window-titlebar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+}
+
+.window-titlebar:active {
+  cursor: grabbing;
+}
+
+.window-title {
+  flex: 1;
+  font-weight: 700;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.window-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.window-btn {
+  width: 16px;
+  height: 14px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  color: #000;
+}
+
+.window-btn:active {
+  border-top-color: var(--win-face-darker);
+  border-left-color: var(--win-face-darker);
+  border-right-color: var(--win-face-light);
+  border-bottom-color: var(--win-face-light);
+}
+
+.window-body {
+  flex: 1;
+  min-height: 0;
+  margin: 2px;
+  overflow: auto;
+  background: var(--win-face);
+  color: var(--win-text);
+  user-select: text;
+}
+
+.window-body.padded {
+  padding: 12px;
+}
+
+/* Taskbar */
+.taskbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--taskbar-h);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  z-index: 10000;
+}
+
+.start-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 6px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.start-btn.active {
+  border-top-color: var(--win-face-darker);
+  border-left-color: var(--win-face-darker);
+  border-right-color: var(--win-face-light);
+  border-bottom-color: var(--win-face-light);
+}
+
+.start-logo {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.taskbar-windows {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.task-btn {
+  max-width: 160px;
+  min-width: 80px;
+  height: 26px;
+  padding: 0 8px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.task-btn.active {
+  border-top-color: var(--win-face-darker);
+  border-left-color: var(--win-face-darker);
+  border-right-color: var(--win-face-light);
+  border-bottom-color: var(--win-face-light);
+  font-weight: 700;
+}
+
+.tray {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 8px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Start menu */
+.start-menu {
+  position: absolute;
+  left: 2px;
+  bottom: calc(var(--taskbar-h) + 2px);
+  width: 220px;
+  z-index: 10001;
+  display: flex;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.start-banner {
+  width: 28px;
+  background: linear-gradient(180deg, #000080, #1084d0);
+  color: #fff;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 0;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.start-items {
+  flex: 1;
+  background: var(--win-face);
+  padding: 2px 0;
+}
+
+.start-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: #000;
+}
+
+.start-item:hover,
+.start-item:focus-visible {
+  background: var(--win-selection);
+  color: #fff;
+  outline: none;
+}
+
+.start-item .item-icon {
+  width: 24px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.start-divider {
+  height: 2px;
+  margin: 4px 6px;
+  border-top: 1px solid var(--win-face-dark);
+  border-bottom: 1px solid var(--win-face-light);
+}
+
+/* App content helpers */
+.app-heading {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.app-sub {
+  margin: 0 0 12px;
+  color: #404040;
+  font-style: italic;
+}
+
+.app-body p {
+  margin: 0 0 10px;
+  line-height: 1.45;
+  font-size: 12px;
+}
+
+.link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.link-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  text-decoration: none;
+  color: #000;
+  background: var(--win-face);
+}
+
+.link-list a:hover {
+  background: var(--win-selection);
+  color: #fff;
+}
+
+.link-list .link-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.link-list .link-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.link-list .link-desc {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+.pdf-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--win-face);
+  border-bottom: 1px solid var(--win-face-dark);
+}
+
+.pdf-toolbar a,
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  text-decoration: none;
+  color: #000;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.pdf-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.pdf-shell iframe {
+  flex: 1;
+  min-height: 0;
+}
+
+.notepad-body {
+  margin: 0;
+  padding: 8px;
+  height: 100%;
+  overflow: auto;
+  background: #fff;
+  font-family: var(--win-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.recycle-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recycle-list li {
+  padding: 6px 8px;
+  border-bottom: 1px solid #dfdfdf;
+}
+
+.coming-soon {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  text-align: center;
+  padding: 16px;
+}
+
+.coming-soon .error-box {
+  max-width: 280px;
+  padding: 12px;
+  background: #fff;
+}
+
+/* Minesweeper */
+.mines-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--win-face);
+}
+
+.mines-hud {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  gap: 8px;
+}
+
+.mines-counter {
+  min-width: 40px;
+  padding: 2px 4px;
+  background: #000;
+  color: #ff2020;
+  font-family: var(--win-mono);
+  font-weight: 700;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.mines-face {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mines-grid {
+  display: grid;
+  gap: 0;
+  background: var(--win-face-dark);
+  border: 2px solid;
+  border-color: var(--win-face-darker) var(--win-face-light) var(--win-face-light)
+    var(--win-face-darker);
+}
+
+.mines-cell {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.mines-cell.hidden {
+  background: var(--win-face);
+  border-top: 2px solid var(--win-face-light);
+  border-left: 2px solid var(--win-face-light);
+  border-right: 2px solid var(--win-face-darker);
+  border-bottom: 2px solid var(--win-face-darker);
+}
+
+.mines-cell.revealed {
+  background: #bdbdbd;
+  border: 1px solid #808080;
+}
+
+.mines-cell.mine {
+  background: #ff0000;
+}
+
+.mines-cell.n1 { color: #0000ff; }
+.mines-cell.n2 { color: #008000; }
+.mines-cell.n3 { color: #ff0000; }
+.mines-cell.n4 { color: #000080; }
+.mines-cell.n5 { color: #800000; }
+.mines-cell.n6 { color: #008080; }
+.mines-cell.n7 { color: #000000; }
+.mines-cell.n8 { color: #808080; }
+
+/* Solitaire (Klondike) */
+.sol-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #008000;
+  color: #fff;
+  position: relative;
+}
+
+.sol-menubar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  background: var(--win-face);
+  color: #000;
+  border-bottom: 1px solid var(--win-face-dark);
+  flex-shrink: 0;
+}
+
+.sol-status {
+  flex: 1;
+  font-size: 11px;
+  color: #202020;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sol-draws {
+  min-width: 28px;
+  padding: 1px 4px;
+  background: #000;
+  color: #ff2020;
+  font-family: var(--win-mono);
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+}
+
+.sol-board {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sol-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.sol-stock-area {
+  display: flex;
+  gap: 12px;
+}
+
+.sol-foundations {
+  display: flex;
+  gap: 8px;
+}
+
+.sol-tableau {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  align-items: flex-start;
+  min-height: 280px;
+}
+
+.sol-column {
+  position: relative;
+  width: 72px;
+  flex: 1;
+  min-height: 100px;
+}
+
+.sol-stack-item {
+  position: relative;
+  height: 22px;
+}
+
+.sol-stack-item:last-child {
+  height: 96px;
+}
+
+.sol-card,
+.sol-slot {
+  width: 72px;
+  height: 96px;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.sol-slot {
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sol-slot.highlight {
+  border-color: #ffff66;
+  background: rgba(255, 255, 100, 0.15);
+  box-shadow: 0 0 0 1px #ffff66;
+}
+
+.sol-card-back {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #000080,
+      #000080 4px,
+      #1040a0 4px,
+      #1040a0 8px
+    );
+  border: 2px solid #fff;
+  box-shadow: inset 0 0 0 2px #000080;
+}
+
+.sol-card-face {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1px solid #202020;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+  color: #000;
+}
+
+.sol-card-face.red {
+  color: #c00000;
+}
+
+.sol-card-face.black {
+  color: #101010;
+}
+
+.sol-card-face.selected,
+.sol-card-back.selected {
+  outline: 2px solid #ffff00;
+  outline-offset: 1px;
+  z-index: 5;
+}
+
+.sol-card.stacked {
+  /* face peeks from stack via parent height clip */
+}
+
+.sol-rank {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sol-suit {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sol-win-banner {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  color: #000;
+  z-index: 20;
+  min-width: 200px;
+  text-align: center;
+}
+
+/* Boot splash */
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  color: #c0c0c0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--win-mono);
+  font-size: 14px;
+}
+
+.boot-screen .boot-logo {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.boot-screen .boot-bar {
+  width: 200px;
+  height: 18px;
+  border: 2px solid #c0c0c0;
+  padding: 2px;
+}
+
+.boot-screen .boot-fill {
+  height: 100%;
+  background: #000080;
+  width: 0%;
+  animation: boot-load 1.4s ease-out forwards;
+}
+
+@keyframes boot-load {
+  to {
+    width: 100%;
+  }
+}
+
+/*
+ * Phone / narrow layout only — desktop chrome above is unchanged.
+ * Goal: fit the screen, keep Win95 look, make title-bar controls tappable.
+ */
+@media (max-width: 640px) {
+  :root {
+    --taskbar-h: 44px;
+  }
+
+  html,
+  body,
+  #root {
+    /* Avoid mobile browser chrome clipping the taskbar */
+    height: 100%;
+    height: 100dvh;
+  }
+
+  .desktop-icons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: none;
+    max-width: calc(100% - 24px);
+    gap: 4px 2px;
+  }
+
+  .desktop-icon {
+    width: 72px;
+    min-height: 68px;
+    padding: 8px 4px;
+    /* Reduce tap delay / accidental double-tap zoom */
+    touch-action: manipulation;
+  }
+
+  .desktop-icon .icon-glyph {
+    width: 36px;
+    height: 36px;
+    font-size: 26px;
+  }
+
+  .desktop-icon .icon-label {
+    font-size: 11px;
+  }
+
+  /* Nearly full-screen windows so the × is always on-screen */
+  .window {
+    left: max(4px, env(safe-area-inset-left, 0px)) !important;
+    top: max(4px, env(safe-area-inset-top, 0px)) !important;
+    width: calc(
+      100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+    ) !important;
+    height: calc(
+      100dvh - var(--taskbar-h) - 8px - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    ) !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .window-titlebar {
+    height: 40px;
+    padding: 4px 4px 4px 8px;
+    gap: 8px;
+    /* Full-screen layout: drag is disabled in JS; don't imply grab */
+    cursor: default;
+  }
+
+  .window-titlebar:active {
+    cursor: default;
+  }
+
+  .window-title {
+    font-size: 13px;
+  }
+
+  .window-controls {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Win95 buttons, but fat enough for a thumb */
+  .window-btn {
+    width: 40px;
+    height: 32px;
+    font-size: 16px;
+    touch-action: manipulation;
+  }
+
+  .taskbar {
+    padding-bottom: max(3px, env(safe-area-inset-bottom, 0px));
+    height: calc(var(--taskbar-h) + env(safe-area-inset-bottom, 0px));
+    align-items: flex-end;
+    padding-top: 4px;
+  }
+
+  .start-btn {
+    height: 36px;
+    min-height: 36px;
+    touch-action: manipulation;
+  }
+
+  .task-btn {
+    min-width: 56px;
+    max-width: 120px;
+    height: 34px;
+    touch-action: manipulation;
+  }
+
+  .tray {
+    height: 34px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .start-menu {
+    width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    left: max(2px, env(safe-area-inset-left, 0px));
+    max-height: calc(100dvh - var(--taskbar-h) - 16px - env(safe-area-inset-bottom, 0px));
+    overflow: auto;
+  }
+
+  .start-item {
+    padding: 12px 14px;
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .win-btn,
+  .pdf-toolbar a {
+    min-height: 36px;
+    padding: 6px 12px;
+    touch-action: manipulation;
+  }
+}
